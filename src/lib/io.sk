@@ -1,15 +1,24 @@
 if TARGET == .JAVASCRIPT {
   namespace IO {
     def isDirectory(path string) bool {
-      try {
-        return dynamic.require("fs").statSync(path).isDirectory()
+      const qjs = dynamic.globalThis.std != dynamic.void(0)
+
+      if qjs {
+        const os = dynamic.globalThis.os
+        return os.stat(path) & os.S_IFMT == os.S_IFDIR
+      } else {
+        try {
+          return dynamic.require("fs").statSync(path).isDirectory()
+        }
       }
       return false
     }
 
     def readDirectory(path string) List<string> {
+      const qjs = dynamic.globalThis.std != dynamic.void(0)
+
       try {
-        var entries List<string> = dynamic.require("fs").readdirSync(path)
+        var entries List<string> = qjs ? dynamic.os.readdir(path) : dynamic.require("fs").readdirSync(path)
         entries.sort((a, b) => a <=> b)
         return entries
       }
@@ -17,29 +26,85 @@ if TARGET == .JAVASCRIPT {
     }
 
     def readFile(path string) string {
+      const qjs = dynamic.globalThis.std != dynamic.void(0)
+
       try {
-        var contents string = dynamic.require("fs").readFileSync(path, "utf8")
+        var contents string = qjs ? dynamic.std.loadFile(path) : dynamic.require("fs").readFileSync(path, "utf8")
         return contents.replaceAll("\r\n", "\n")
       }
       return null
     }
 
     def writeFile(path string, contents string) bool {
-      const fs = dynamic.require("fs")
-      const p = dynamic.require("path")
+      const qjs = dynamic.globalThis.std != dynamic.void(0)
+      var dirname fn(string) string
       var mkdir_p fn(string)
-      mkdir_p = dir => {
-        if dir != p.dirname(dir) {
-          mkdir_p(p.dirname(dir))
-          try { fs.mkdirSync(dir) }
+      
+      if qjs {
+        const os = dynamic.globalThis.os
+        const std = dynamic.globalThis.std
+
+        dirname = path => {
+          if path.count == 0 { return "." }
+          var code = path[0]
+          var hasRoot = code == '/'
+          var end = -1
+          var matchedSlash = true
+          for i = path.count - 1; i >= 1; --i {
+            code = path[i]
+            if code == '/' {
+              if !matchedSlash {
+                end = i
+                break
+              }
+            } else {
+              # We saw the first non-path separator
+              matchedSlash = false
+              }
+            }
+
+            if end == -1 { return hasRoot ? "/" : "." }
+            if hasRoot && end == 1 { return "//" }
+            return path.slice(0, end)
         }
-      }
-      mkdir_p(p.dirname(path))
-      try {
-        fs.writeFileSync(path, contents)
+        mkdir_p = dir => {
+          if dir != dirname(dir) {
+            mkdir_p(dirname(dir))
+            try { os.mkdir(dir) }
+          }
+        }
+  
+        mkdir_p(dirname(path))
+
+        var file = std.open(path, "w")
+        if file.error() {
+          return false
+        }
+        file.puts(contents)
+        if file.error() {
+          return false
+        }
+        file.close()
         return true
+      } else {
+        const fs = dynamic.require("fs")
+        const p = dynamic.require("path")
+
+        dirname = p.dirname
+        mkdir_p = dir => {
+          if dir != dirname(dir) {
+            mkdir_p(dirname(dir))
+            try { fs.mkdirSync(dir) }
+          }
+        }
+
+        mkdir_p(dirname(path))
+        try {
+          fs.writeFileSync(path, contents)
+          return true
+        }
+        return false
       }
-      return false
     }
   }
 }

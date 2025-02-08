@@ -225,9 +225,9 @@ namespace Skew {
       var entryPointSymbol = _cache.entryPointSymbol
       if entryPointSymbol != null {
         var type = entryPointSymbol.resolvedType
-        var callText = _fullName(entryPointSymbol) + (type.argumentTypes.isEmpty ? "()" : "(process.argv.slice(2))")
+        var callText = _fullName(entryPointSymbol) + (type.argumentTypes.isEmpty ? "()" : "(globalThis.process !== undefined ? process.argv.slice(2) : scriptArgs.slice(1))")
         _emitSemicolonIfNeeded
-        _emit(_newline + _indent + (type.returnType == _cache.intType ? "process.exit(" + callText + ")" : callText))
+        _emit(_newline + _indent + (type.returnType == _cache.intType ? "(globalThis.process !== undefined ? process : std).exit(" + callText + ")" : callText))
         _emitSemicolonAfterStatement
       }
 

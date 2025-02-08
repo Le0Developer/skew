@@ -29,17 +29,34 @@ namespace Terminal {
 
   if TARGET == .JAVASCRIPT {
     def setColor(color Color) {
-      if dynamic.process.stdout.isTTY {
+      var is_tty bool
+      if dynamic.globalThis.os != dynamic.void(0) {
+        is_tty = dynamic.os.isatty(dynamic.std.out.fileno())  
+      } else {
+        is_tty = dynamic.process.stdout.isTTY
+      }
+
+      if is_tty {
         write("\x1B[0;\(color.toEscapeCode)m")
       }
     }
 
     def width int {
-      return dynamic.process.stdout.columns
+      if dynamic.globalThis.os != dynamic.void(0) {
+        var winsize = dynamic.os.ttyGetWinSize(dynamic.std.out.fileno())
+        return winsize == null ? -1 : winsize[0]
+      } else {
+        return dynamic.process.stdout.columns
+      }
     }
 
     def height int {
-      return dynamic.process.stdout.rows
+      if dynamic.globalThis.os != dynamic.void(0) {
+        var winsize = dynamic.os.ttyGetWinSize(dynamic.std.out.fileno())
+        return winsize == null ? -1 : winsize[1]
+      } else {
+        return dynamic.process.stdout.rows
+      }
     }
 
     def print(text string) {
@@ -47,10 +64,17 @@ namespace Terminal {
     }
 
     def flush {
+      if dynamic.globalThis.std != dynamic.void(0) {
+        dynamic.std.out.flush()
+      }
     }
 
     def write(text string) {
-      dynamic.process.stdout.write(text)
+      if dynamic.globalThis.std != dynamic.void(0) {
+        dynamic.std.out.puts(text)
+      } else {
+        dynamic.process.stdout.write(text)
+      }
     }
   }
 

@@ -6,7 +6,7 @@ import glob
 import gzip
 import json
 import time
-import pipes
+import shlex
 import base64
 import shutil
 import subprocess
@@ -72,7 +72,7 @@ def job(fn):
 
 def run(args, exit_on_failure=True, **kwargs):
   # Print the command for debugging so that it can be copied and pasted into a terminal directly
-  print(' '.join(map(pipes.quote, args)))
+  print(' '.join(map(shlex.quote, args)))
 
   # Start the process
   process = subprocess.Popen(args, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, **kwargs)
@@ -139,9 +139,12 @@ def run_js(source, args, exit_on_failure=True):
   global node_binary
 
   if node_binary is None:
-    node_binary = 'nodejs' if run(['which', 'nodejs'], exit_on_failure=False) == 0 else 'node'
+    node_binary = 'nodejs' if shutil.which('nodejs') else 'node'
 
   run([node_binary, source] + args, exit_on_failure=exit_on_failure)
+
+def run_qjs(source, args, exit_on_failure=True):
+  run(['qjs', '--stack-size', str(2 * 1024 * 1024), '--std', source] + args, exit_on_failure=exit_on_failure)
 
 def run_cs(source, args):
   run(['mono', '--debug', source] + args)
@@ -149,8 +152,9 @@ def run_cs(source, args):
 def run_cpp(source, args):
   run([source] + args)
 
-def skewc_js(source, target, sources=SOURCES, build='SKEWC', release=False, exit_on_failure=True):
-  run_js(source, sources + FLAGS + ['--output-file=' + target, '--define:BUILD=' + build] + (['--release'] if release else []), exit_on_failure=exit_on_failure)
+def skewc_js(source, target, sources=SOURCES, build='SKEWC', release=False, exit_on_failure=True, qjs=False):
+  current_run_js = run_qjs if qjs else run_js
+  current_run_js(source, sources + FLAGS + ['--output-file=' + target, '--define:BUILD=' + build] + (['--release'] if release else []), exit_on_failure=exit_on_failure)
 
 def skewc_cs(source, target, sources=SOURCES, build='SKEWC', release=False):
   run_cs(source, sources + FLAGS + ['--output-file=' + target, '--define:BUILD=' + build] + (['--release'] if release else []))
@@ -192,6 +196,19 @@ def check():
   check_js()
   check_cs()
   check_cpp()
+
+@job
+def bootstrap_qjs():
+  mkdir('out')
+  # build latest version of skewc
+  skewc_js('skewc.js', 'out/skewc.js', build='SKEWC')
+  # stage1: build a cross compiler targeting qjs code running on node
+  skewc_js('out/skewc.js', 'out/skewc.qjs-stage1.js', build='SKEWC')
+  # stage2: self-compile using the node-built toolchain
+  skewc_js('out/skewc.qjs-stage1.js', 'out/skewc.qjs-stage2.js', build='SKEWC', qjs=True)
+  # final: building native skewc using native toolchain
+  skewc_js('out/skewc.qjs-stage2.js', 'out/skewc.qjs.js', build='SKEWC', qjs=True)
+  skewc_js('out/skewc.qjs-stage2.js', 'out/skew-api.qjs.js', build='API', qjs=True)
 
 @job
 def check_js():
