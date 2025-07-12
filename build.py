@@ -167,7 +167,9 @@ def compile_cpp(source, target, release=False, gc=False):
 @job
 def default():
   mkdir('out')
+  skewc_js('skewc.js', 'out/skewc.js', build='SKEWC')
   skewc_js('skewc.js', 'out/skewc.min.js', build='SKEWC', release=True)
+  skewc_js('skewc.js', 'out/skew-api.js', build='API')
   skewc_js('skewc.js', 'out/skew-api.min.js', build='API', release=True)
 
 @job
