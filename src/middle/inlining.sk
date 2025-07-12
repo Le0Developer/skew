@@ -212,7 +212,8 @@ namespace Skew.Inlining {
             inliningInfo.append(info)
           }
         } else if symbol.isInliningForced {
-          log.semanticWarningInliningFailed(symbol.range, symbol.name)
+          # log.semanticWarningInliningFailed(symbol.range, symbol.name)
+          symbol.comments = Comment.concat(symbol.comments, [Comment.new(symbol.range, ["@INLINE"], false, false)])
         }
       }
 
