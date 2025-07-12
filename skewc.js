@@ -688,6 +688,7 @@
     parser.define(Skew.Options.Type.BOOL, Skew.Option.FIX_ALL, '--fix-all', 'Attempt to automatically fix as many errors and warnings as possible. ' + "THIS WILL WRITE OVER YOUR SOURCE CODE. Make sure you know what you're doing.");
     parser.define(Skew.Options.Type.BOOL, Skew.Option.IGNORED_COMMENT_WARNING, '--ignored-comment-warning', "Warn when the compiler doesn't store a comment in the parse tree.");
     parser.define(Skew.Options.Type.BOOL, Skew.Option.WARNINGS_ARE_ERRORS, '--warnings-are-errors', 'Turns warnings into errors.');
+    parser.define(Skew.Options.Type.BOOL, Skew.Option.EMIT_COMMENTS, '--emit-comments', 'Emit comments even in release mode if they start with a @');
 
     // Parse the command line arguments
     parser.parse(log, $arguments);
@@ -721,6 +722,7 @@
     options.verbose = parser.boolForOption(Skew.Option.VERBOSE, false);
     options.warnAboutIgnoredComments = parser.boolForOption(Skew.Option.IGNORED_COMMENT_WARNING, false);
     options.warningsAreErrors = parser.boolForOption(Skew.Option.WARNINGS_ARE_ERRORS, false);
+    options.emitComments = parser.boolForOption(Skew.Option.EMIT_COMMENTS, false);
 
     // Prepare the defines
     if (releaseFlag) {
@@ -3624,17 +3626,33 @@
   };
 
   Skew.JavaScriptEmitter.prototype._emitComments = function(comments) {
-    if (comments != null && !this._minify) {
-      for (var i1 = 0, list1 = comments, count1 = list1.length; i1 < count1; i1 = i1 + 1 | 0) {
-        var comment = in_List.get(list1, i1);
+    if (comments != null) {
+      if (!this._minify) {
+        for (var i1 = 0, list1 = comments, count1 = list1.length; i1 < count1; i1 = i1 + 1 | 0) {
+          var comment = in_List.get(list1, i1);
 
-        for (var i = 0, list = comment.lines, count = list.length; i < count; i = i + 1 | 0) {
-          var line = in_List.get(list, i);
-          this._emit(this._indent + '//' + line + '\n');
+          for (var i = 0, list = comment.lines, count = list.length; i < count; i = i + 1 | 0) {
+            var line = in_List.get(list, i);
+            this._emit(this._indent + '//' + line + '\n');
+          }
+
+          if (comment.hasGapBelow) {
+            this._emit('\n');
+          }
         }
+      }
 
-        if (comment.hasGapBelow) {
-          this._emit('\n');
+      else if (this._options.emitComments) {
+        for (var i3 = 0, list3 = comments, count3 = list3.length; i3 < count3; i3 = i3 + 1 | 0) {
+          var comment1 = in_List.get(list3, i3);
+
+          for (var i2 = 0, list2 = comment1.lines, count2 = list2.length; i2 < count2; i2 = i2 + 1 | 0) {
+            var line1 = in_List.get(list2, i2);
+
+            if (line1.startsWith('@')) {
+              this._emit('/*' + line1 + '*/');
+            }
+          }
         }
       }
     }
@@ -12521,10 +12539,6 @@
     return ' of type' + (types.length == 1 ? '' : 's') + ' ' + Skew.PrettyPrint.join(names, 'and');
   };
 
-  Skew.Log.prototype.semanticWarningInliningFailed = function(range, name) {
-    this.append(this.newWarning(range, 'Cannot inline function "' + name + '"'));
-  };
-
   Skew.Log.prototype.semanticWarningIdenticalOperands = function(range, operator) {
     this.append(this.newWarning(range, 'Both sides of "' + operator + '" are identical, is this a bug?'));
   };
@@ -13229,7 +13243,8 @@
     TARGET: 16,
     VERBOSE: 17,
     VERSION: 18,
-    WARNINGS_ARE_ERRORS: 19
+    WARNINGS_ARE_ERRORS: 19,
+    EMIT_COMMENTS: 20
   };
 
   Skew.DiagnosticKind = {
@@ -21706,6 +21721,7 @@
     self.verbose = false;
     self.warnAboutIgnoredComments = false;
     self.warningsAreErrors = false;
+    self.emitComments = false;
     self.passes = [
       new Skew.LexingPass(),
       new Skew.ParsingPass(),
@@ -22451,7 +22467,8 @@
       }
 
       else if (symbol.isInliningForced()) {
-        log.semanticWarningInliningFailed(symbol.range, symbol.name);
+        // log.semanticWarningInliningFailed(symbol.range, symbol.name)
+        symbol.comments = Skew.Comment.concat(symbol.comments, [new Skew.Comment(symbol.range, ['@INLINE'], false, false)]);
       }
     }
 
