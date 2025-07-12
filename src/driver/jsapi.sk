@@ -384,7 +384,7 @@ namespace Skew.API {
   def apiMain {
     # JavaScript API
     var this = (=> dynamic.this)()
-    var api = dynamic.typeof(dynamic.exports) != "undefined" ? dynamic.exports : this.Skew ? this.Skew : this.Skew = {}
+    var api = dynamic.typeof(dynamic.module) != "undefined" && dynamic.typeof(dynamic.module.exports) != "undefined" ? dynamic.module.exports : dynamic.typeof(dynamic.exports) != "undefined" ? dynamic.exports : this.Skew ? this.Skew : this.Skew = {}
     api.VERSION = VERSION
     api.create = createCompilerInstance
 
