@@ -60,6 +60,7 @@ namespace Skew.API {
     options.jsMangle = !!args.jsMangle || release
     options.jsMinify = !!args.jsMinify || release
     options.jsSourceMap = !!args.jsSourceMap
+    options.emitComments = !!args.emitComments
     options.outputDirectory = args.outputDirectory ? args.outputDirectory + "" : null
     options.outputFile = args.outputFile ? args.outputFile + "" : null
     options.stopAfterResolve = !!args.stopAfterResolve
