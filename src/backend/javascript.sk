@@ -731,13 +731,23 @@ namespace Skew {
     }
 
     def _emitComments(comments List<Comment>) {
-      if comments != null && !_minify {
-        for comment in comments {
-          for line in comment.lines {
-            _emit(_indent + "//" + line + "\n")
+      if comments != null {
+        if !_minify {
+          for comment in comments {
+            for line in comment.lines {
+              _emit(_indent + "//" + line + "\n")
+            }
+            if comment.hasGapBelow {
+              _emit("\n")
+            }
           }
-          if comment.hasGapBelow {
-            _emit("\n")
+        } else if _options.emitComments {
+          for comment in comments {
+            for line in comment.lines {
+              if line.startsWith("@") {
+                _emit("/*\(line)*/")
+              }
+            }
           }
         }
       }

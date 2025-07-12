@@ -20,6 +20,7 @@ namespace Skew {
     VERBOSE
     VERSION
     WARNINGS_ARE_ERRORS
+    EMIT_COMMENTS
   }
 
   const DEFAULT_MESSAGE_LIMIT = 10
@@ -259,6 +260,7 @@ namespace Skew {
       "THIS WILL WRITE OVER YOUR SOURCE CODE. Make sure you know what you're doing.")
     parser.define(.BOOL, .IGNORED_COMMENT_WARNING, "--ignored-comment-warning", "Warn when the compiler doesn't store a comment in the parse tree.")
     parser.define(.BOOL, .WARNINGS_ARE_ERRORS, "--warnings-are-errors", "Turns warnings into errors.")
+    parser.define(.BOOL, .EMIT_COMMENTS, "--emit-comments", "Emit comments even in release mode if they start with a @")
 
     # Parse the command line arguments
     parser.parse(log, arguments)
@@ -291,6 +293,7 @@ namespace Skew {
     options.verbose = parser.boolForOption(.VERBOSE, false)
     options.warnAboutIgnoredComments = parser.boolForOption(.IGNORED_COMMENT_WARNING, false)
     options.warningsAreErrors = parser.boolForOption(.WARNINGS_ARE_ERRORS, false)
+    options.emitComments = parser.boolForOption(.EMIT_COMMENTS, false)
 
     # Prepare the defines
     if releaseFlag {
